@@ -33,6 +33,9 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
+import org.firstinspires.ftc.teamcode.mechanism.FieldCentric;
+import org.firstinspires.ftc.teamcode.mechanism.FlowerServo;
+
 /*
  * This file includes a teleop (driver-controlled) file for the goBILDA® StarterBot with Mecanum
  * Wheels for the 2026-2027 FIRST® Tech Challenge. On top of a mecanum wheel drivetrain, it uses
@@ -48,15 +51,24 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
  * we will also need to adjust the "PIDF" coefficients with some that are a better fit for our application.
  */
 
-@TeleOp(name = "Mec BioBuzz StarterBot Teleop", group = "StarterBot")
+@TeleOp(name = "BioBuzzKitBot Teleop", group = "StarterBot")
 //@Disabled
-public class BioBuzzStarterbotTeleopMecanum extends OpMode {
+public class BioBuzzKitbotTeleop extends OpMode {
 
     // Declare OpMode members.
-    private DcMotor leftFrontDrive = null;
-    private DcMotor leftBackDrive = null;
-    private DcMotor rightFrontDrive = null;
-    private DcMotor rightBackDrive = null;
+    FieldCentric drive = new FieldCentric();
+
+    double forward, strafe, rotate;
+
+    private IMU imu;
+
+    FlowerServo flower = new FlowerServo();
+
+
+    //private DcMotor leftFrontDrive = null;
+   // private DcMotor leftBackDrive = null;
+   // private DcMotor rightFrontDrive = null;
+  //  private DcMotor rightBackDrive = null;
     private DcMotorEx launcher = null;
     private DcMotor intake = null;
     private CRServo leftIntakeServo = null;
@@ -85,10 +97,10 @@ public class BioBuzzStarterbotTeleopMecanum extends OpMode {
      * choose to declare these variables inside the mecanumDrive() function, instead we declare them
      * here so that we can access them in our main loop for telemetry.
      */
-    double leftFrontPower;
-    double rightFrontPower;
-    double leftBackPower;
-    double rightBackPower;
+   // double leftFrontPower;
+   // double rightFrontPower;
+   // double leftBackPower;
+   // double rightBackPower;
 
     // Create a variable to set to the intake.
     double intakePower;
@@ -104,15 +116,18 @@ public class BioBuzzStarterbotTeleopMecanum extends OpMode {
          * to 'get' must correspond to the names assigned during the robot configuration
          * step.
          */
-        leftFrontDrive = hardwareMap.get(DcMotor.class, "left_front_drive");
-        rightFrontDrive = hardwareMap.get(DcMotor.class, "right_front_drive");
-        leftBackDrive = hardwareMap.get(DcMotor.class, "left_back_drive");
-        rightBackDrive = hardwareMap.get(DcMotor.class, "right_back_drive");
+       // leftFrontDrive = hardwareMap.get(DcMotor.class, "left_front_drive");
+       // rightFrontDrive = hardwareMap.get(DcMotor.class, "right_front_drive");
+       // leftBackDrive = hardwareMap.get(DcMotor.class, "left_back_drive");
+       // rightBackDrive = hardwareMap.get(DcMotor.class, "right_back_drive");
         intake = hardwareMap.get(DcMotor.class, "intake");
         launcher = hardwareMap.get(DcMotorEx.class, "launcher");
         windmillServo = hardwareMap.get(CRServo.class, "windmillServo");
         leftIntakeServo = hardwareMap.get(CRServo.class, "left_intake_servo");
         rightIntakeServo = hardwareMap.get(CRServo.class, "right_intake_servo");
+        drive.init(hardwareMap);
+        imu = hardwareMap.get(IMU.class, "imu");
+        flower.init(hardwareMap);
 
         /*
          * To drive forward, most robots need the motor on one side to be reversed,
@@ -121,10 +136,10 @@ public class BioBuzzStarterbotTeleopMecanum extends OpMode {
          * Note: The settings here assume direct drive on left and right wheels. Gear
          * Reduction or 90 Deg drives may require direction flips
          */
-        leftFrontDrive.setDirection(DcMotor.Direction.FORWARD);
-        rightFrontDrive.setDirection(DcMotor.Direction.REVERSE);
-        leftBackDrive.setDirection(DcMotor.Direction.FORWARD);
-        rightBackDrive.setDirection(DcMotor.Direction.REVERSE);
+       // leftFrontDrive.setDirection(DcMotor.Direction.FORWARD);
+       // rightFrontDrive.setDirection(DcMotor.Direction.REVERSE);
+      //  leftBackDrive.setDirection(DcMotor.Direction.FORWARD);
+      //  rightBackDrive.setDirection(DcMotor.Direction.REVERSE);
         intake.setDirection(DcMotorSimple.Direction.REVERSE);
         /*
 
@@ -132,10 +147,10 @@ public class BioBuzzStarterbotTeleopMecanum extends OpMode {
          * slow down much faster when it is coasting. This creates a much more controllable
          * drivetrain. As the robot stops much quicker.
          */
-        leftFrontDrive.setZeroPowerBehavior(BRAKE);
-        rightFrontDrive.setZeroPowerBehavior(BRAKE);
-        leftBackDrive.setZeroPowerBehavior(BRAKE);
-        rightBackDrive.setZeroPowerBehavior(BRAKE);
+        //leftFrontDrive.setZeroPowerBehavior(BRAKE);
+       // rightFrontDrive.setZeroPowerBehavior(BRAKE);
+       // leftBackDrive.setZeroPowerBehavior(BRAKE);
+       // rightBackDrive.setZeroPowerBehavior(BRAKE);
         intake.setZeroPowerBehavior(BRAKE);
 
         /*
@@ -199,7 +214,7 @@ public class BioBuzzStarterbotTeleopMecanum extends OpMode {
          * Note, moving the joystick forward on most gamepads results in a negative signal, so
          * we invert it before passing it to the function.
          */
-        mecanumDrive(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
+        //mecanumDrive(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
 
         /*
          * Set the intake power variable to equal the right trigger, minus the left trigger.
@@ -213,7 +228,26 @@ public class BioBuzzStarterbotTeleopMecanum extends OpMode {
          * allow us to avoid setting the same motors/servos power more than once per loop. That can
          * create erratic behavior.
          */
-        intakePower = gamepad2.right_trigger - gamepad2.left_trigger;
+        if (gamepad1.x) {
+            imu.resetYaw();
+        }
+        if (gamepad2.dpad_right) {
+            flower.setFlower(0.44);
+        } else {
+            flower.setFlower(0.0);
+
+        }
+        double speed = gamepad1.left_bumper ? 0.3 : 1.0;
+
+
+
+        forward = -gamepad1.left_stick_y * speed;
+        strafe = gamepad1.left_stick_x * speed;
+        rotate = gamepad1.right_stick_x * speed;
+
+        drive.driveFieldRelative(forward, strafe, rotate);
+
+        intakePower = gamepad2.left_trigger - gamepad2.right_trigger;
 
         launch();
 
@@ -232,7 +266,7 @@ public class BioBuzzStarterbotTeleopMecanum extends OpMode {
         /*
          * Show motor powers on the Driver Station via telemetry.
          */
-        telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftFrontPower, rightFrontPower);
+        //telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftFrontPower, rightFrontPower);
         telemetry.addData("Triggers", "left (%.2f, right (%.2f)",gamepad2.left_trigger, gamepad2.right_trigger);
     }
 
@@ -243,31 +277,31 @@ public class BioBuzzStarterbotTeleopMecanum extends OpMode {
     public void stop() {
     }
 
-    void mecanumDrive(double forward, double strafe, double rotate) {
-        leftFrontPower = forward + strafe + rotate;
-        rightFrontPower = forward - strafe - rotate;
-        leftBackPower = forward - strafe + rotate;
-        rightBackPower = forward + strafe - rotate;
+   // void mecanumDrive(double forward, double strafe, double rotate) {
+    //    leftFrontPower = forward + strafe + rotate;
+    //    rightFrontPower = forward - strafe - rotate;
+    //    leftBackPower = forward - strafe + rotate;
+    //    rightBackPower = forward + strafe - rotate;
 
-        double max = Math.max(Math.abs(leftFrontPower), Math.abs(rightFrontPower));
-        max = Math.max(max, Math.abs(leftBackPower));
-        max = Math.max(max, Math.abs(rightBackPower));
+      //  double max = Math.max(Math.abs(leftFrontPower), Math.abs(rightFrontPower));
+      //  max = Math.max(max, Math.abs(leftBackPower));
+     //   max = Math.max(max, Math.abs(rightBackPower));
 
-        if (max > 1.0) {
-            leftFrontPower /= max;
-            rightFrontPower /= max;
-            leftBackPower /= max;
-            rightBackPower /= max;
-        }
+     //   if (max > 1.0) {
+      //      leftFrontPower /= max;
+      //      rightFrontPower /= max;
+       //     leftBackPower /= max;
+       //     rightBackPower /= max;
+        //}
 
         /*
          * Send calculated power to wheels
          */
-        leftFrontDrive.setPower(leftFrontPower);
-        rightFrontDrive.setPower(rightFrontPower);
-        leftBackDrive.setPower(leftBackPower);
-        rightBackDrive.setPower(rightBackPower);
-    }
+        //leftFrontDrive.setPower(leftFrontPower);
+       // rightFrontDrive.setPower(rightFrontPower);
+        //leftBackDrive.setPower(leftBackPower);
+        //rightBackDrive.setPower(rightBackPower);
+
 
     void launch() {
         /*
@@ -293,7 +327,7 @@ public class BioBuzzStarterbotTeleopMecanum extends OpMode {
          */
         if (gamepad2.right_bumper && launcher.getVelocity() > LAUNCHER_MIN_VELOCITY) {
             windmillServo.setPower(1);
-            intakePower -= 0.5;
+            intakePower -= 1.0;
         } else {
             windmillServo.setPower(0);
         }
